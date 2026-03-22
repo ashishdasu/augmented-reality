@@ -11,6 +11,7 @@ int main() {
     const cv::Size board_size(9, 6);
 
     cv::Mat frame, gray;
+    cv::Mat camera_matrix, dist_coeffs;
     std::vector<cv::Point2f> corner_set;
     std::vector<cv::Point2f> last_corners;
     bool last_found = false;
@@ -43,7 +44,6 @@ int main() {
         last_corners = corner_set;
         last_found   = found;
 
-        // Show saved frame count on the live feed
         cv::putText(frame,
             "Saved: " + std::to_string(corner_list.size()),
             cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0,
@@ -54,7 +54,6 @@ int main() {
         int key = cv::waitKey(10);
         if (key == 'q') break;
 
-        // Save current frame's corners and matching world points
         if (key == 's' && last_found) {
             corner_list.push_back(last_corners);
             point_list.push_back(generateWorldPoints());
@@ -62,8 +61,38 @@ int main() {
             std::string filename = "cal_frame_" +
                 std::to_string(corner_list.size()) + ".png";
             cv::imwrite(filename, frame);
-
             std::cout << "Saved calibration frame " << corner_list.size() << "\n";
+        }
+
+        // Run calibration once at least 5 frames have been collected
+        if (key == 'c' && corner_list.size() >= 5) {
+            // Initialize camera matrix with principal point at image center
+            camera_matrix = cv::Mat::eye(3, 3, CV_64FC1);
+            camera_matrix.at<double>(0, 2) = frame.cols / 2.0;
+            camera_matrix.at<double>(1, 2) = frame.rows / 2.0;
+
+            dist_coeffs = cv::Mat::zeros(5, 1, CV_64FC1);
+
+            std::vector<cv::Mat> rvecs, tvecs;
+
+            std::cout << "Camera matrix (initial):\n" << camera_matrix << "\n";
+
+            double error = cv::calibrateCamera(point_list, corner_list,
+                frame.size(), camera_matrix, dist_coeffs,
+                rvecs, tvecs, cv::CALIB_FIX_ASPECT_RATIO);
+
+            std::cout << "Camera matrix:\n"  << camera_matrix  << "\n"
+                      << "Dist coeffs:\n"    << dist_coeffs    << "\n"
+                      << "Reprojection error: " << error       << "\n";
+        }
+
+        // Save calibration to file
+        if (key == 'w' && !camera_matrix.empty()) {
+            cv::FileStorage fs("calibration.yml", cv::FileStorage::WRITE);
+            fs << "camera_matrix" << camera_matrix;
+            fs << "dist_coeffs"   << dist_coeffs;
+            fs.release();
+            std::cout << "Calibration saved to calibration.yml\n";
         }
     }
 
