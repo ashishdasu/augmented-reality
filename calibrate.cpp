@@ -1,11 +1,21 @@
 #include "utils.h"
 
-int main() {
-    cv::VideoCapture cap(0);
+int main(int argc, char* argv[]) {
+    // Optional argument: camera index (default 0). Use 1 if iPhone Continuity
+    // Camera takes index 0 and pushes the built-in webcam to index 1.
+    int cam_index = (argc > 1) ? std::stoi(argv[1]) : 0;
+
+    cv::VideoCapture cap(cam_index);
     if (!cap.isOpened()) {
-        std::cerr << "Error: could not open camera\n";
+        std::cerr << "Error: could not open camera " << cam_index << "\n";
         return 1;
     }
+    // Request 1080p — OpenCV defaults to 640x480 regardless of camera capability
+    cap.set(cv::CAP_PROP_FRAME_WIDTH,  1920);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+    std::cout << "Using camera index " << cam_index << "  resolution: "
+              << cap.get(cv::CAP_PROP_FRAME_WIDTH) << "x"
+              << cap.get(cv::CAP_PROP_FRAME_HEIGHT) << "\n";
 
     // Checkerboard dimensions: 9x6 internal corners (not squares)
     const cv::Size board_size(9, 6);
@@ -36,9 +46,6 @@ int main() {
                 cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 30, 0.001));
 
             cv::drawChessboardCorners(frame, board_size, corner_set, found);
-
-            std::cout << "Corners: " << corner_set.size()
-                      << "  first: " << corner_set[0] << "\n";
         }
 
         last_corners = corner_set;
@@ -52,7 +59,17 @@ int main() {
         cv::imshow("Calibrate", frame);
 
         int key = cv::waitKey(10);
-        if (key == 'q') break;
+        if (key == 'q') {
+            if (!camera_matrix.empty()) {
+                // Auto-save on quit if calibration was run but not yet saved
+                cv::FileStorage fs("calibration.yml", cv::FileStorage::WRITE);
+                fs << "camera_matrix" << camera_matrix;
+                fs << "dist_coeffs"   << dist_coeffs;
+                fs.release();
+                std::cout << "Auto-saved calibration.yml on quit\n";
+            }
+            break;
+        }
 
         if (key == 's' && last_found) {
             corner_list.push_back(last_corners);
@@ -84,6 +101,13 @@ int main() {
             std::cout << "Camera matrix:\n"  << camera_matrix  << "\n"
                       << "Dist coeffs:\n"    << dist_coeffs    << "\n"
                       << "Reprojection error: " << error       << "\n";
+
+            // Auto-save immediately after every calibration run
+            cv::FileStorage fs("calibration.yml", cv::FileStorage::WRITE);
+            fs << "camera_matrix" << camera_matrix;
+            fs << "dist_coeffs"   << dist_coeffs;
+            fs.release();
+            std::cout << "Auto-saved calibration.yml (error: " << error << ")\n";
         }
 
         // Save calibration to file
