@@ -19,6 +19,15 @@ int main(int argc, char* argv[]) {
     const cv::Size board_size(9, 6);
     std::vector<cv::Vec3f> point_set = generateWorldPoints();
 
+    // Axis tips: origin, +X, +Y (negative), +Z toward camera
+    std::vector<cv::Vec3f> axis_points = {
+        {0, 0, 0}, {3, 0, 0}, {0, -3, 0}, {0, 0, 3}
+    };
+    // Outer board corners for alignment verification
+    std::vector<cv::Vec3f> board_corners = {
+        {0, 0, 0}, {8, 0, 0}, {8, -5, 0}, {0, -5, 0}
+    };
+
     cv::Mat frame, gray;
     cv::Mat rvec, tvec;
     int frame_count = 0;
@@ -41,11 +50,21 @@ int main(int argc, char* argv[]) {
 
             cv::solvePnP(point_set, corner_set, camera_matrix, dist_coeffs, rvec, tvec);
 
-            // Print pose every 15 frames to avoid spam
             if (frame_count % 15 == 0) {
                 std::cout << "rvec: " << rvec.t() << "\n"
                           << "tvec: " << tvec.t() << "\n";
             }
+
+            std::vector<cv::Point2f> axis_img, corners_img;
+            cv::projectPoints(axis_points, rvec, tvec, camera_matrix, dist_coeffs, axis_img);
+            cv::projectPoints(board_corners, rvec, tvec, camera_matrix, dist_coeffs, corners_img);
+
+            cv::line(frame, axis_img[0], axis_img[1], cv::Scalar(0, 0, 255), 3);  // X = red
+            cv::line(frame, axis_img[0], axis_img[2], cv::Scalar(0, 255, 0), 3);  // Y = green
+            cv::line(frame, axis_img[0], axis_img[3], cv::Scalar(255, 0, 0), 3);  // Z = blue
+
+            for (const auto& pt : corners_img)
+                cv::circle(frame, pt, 8, cv::Scalar(0, 255, 255), 2);
         }
 
         frame_count++;
