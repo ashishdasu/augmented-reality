@@ -1,5 +1,10 @@
 #include "utils.h"
 
+// Calibration pipeline:
+//   's' -- save current frame to corner_list/point_list and write cal_frame_N.png
+//   'c' -- run calibrateCamera (requires >= 5 saved frames), auto-saves calibration.yml
+//   'w' -- manually save calibration.yml
+//   'q' -- quit (auto-saves if calibration has been run)
 int main(int argc, char* argv[]) {
     // Optional argument: camera index (default 0). Use 1 if iPhone Continuity
     // Camera takes index 0 and pushes the built-in webcam to index 1.
@@ -42,10 +47,13 @@ int main(int argc, char* argv[]) {
             cv::CALIB_CB_FAST_CHECK);
 
         if (found) {
+            // Refine corner locations to sub-pixel accuracy for better calibration
             cv::cornerSubPix(gray, corner_set, cv::Size(11, 11), cv::Size(-1, -1),
                 cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 30, 0.001));
 
             cv::drawChessboardCorners(frame, board_size, corner_set, found);
+            std::cout << "Corners: " << corner_set.size()
+                      << "  first: " << corner_set[0] << "\n";
         }
 
         last_corners = corner_set;
