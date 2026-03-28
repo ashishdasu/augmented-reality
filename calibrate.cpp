@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     std::vector<cv::Point2f> last_corners;
     bool last_found = false;
 
-    // Accumulate corresponding 2D/3D point sets across calibration frames
+    // 2D image points and corresponding 3D world points per saved frame
     std::vector<std::vector<cv::Point2f>> corner_list;
     std::vector<std::vector<cv::Vec3f>>   point_list;
 
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
             cv::CALIB_CB_FAST_CHECK);
 
         if (found) {
-            // Refine corner locations to sub-pixel accuracy for better calibration
+            // Sub-pixel refinement
             cv::cornerSubPix(gray, corner_set, cv::Size(11, 11), cv::Size(-1, -1),
                 cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 30, 0.001));
 

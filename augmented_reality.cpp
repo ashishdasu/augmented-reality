@@ -92,8 +92,7 @@ OBJMesh loadOBJ(const std::string& path, cv::Vec3f translate, float scale) {
     return mesh;
 }
 
-// Per-frame: detect checkerboard → solvePnP → project the entire mesh
-// with a single projectPoints call, then fill faces and draw edges.
+// Detect checkerboard, estimate pose, project and render the mesh.
 int main(int argc, char* argv[]) {
     cv::Mat camera_matrix, dist_coeffs;
     if (!loadCalibration("calibration.yml", camera_matrix, dist_coeffs)) {
@@ -169,7 +168,7 @@ int main(int argc, char* argv[]) {
             for (const auto& pt : corners_img)
                 cv::circle(frame, pt, 8, cv::Scalar(0, 255, 255), 2);
 
-            // Project entire mesh with one call (efficient)
+            // Project entire mesh with one call
             std::vector<cv::Point2f> proj;
             cv::projectPoints(car.verts, rvec, tvec, camera_matrix, dist_coeffs, proj);
 

@@ -12,7 +12,6 @@ int main() {
     }
 
     cv::namedWindow("Features");
-    // Pass nullptr and read with getTrackbarPos each frame (avoids deprecated pointer API)
     cv::createTrackbar("Threshold", "Features", nullptr, 255);
     cv::createTrackbar("Block size", "Features", nullptr, 10);
     cv::setTrackbarPos("Threshold",  "Features", 150);
@@ -29,15 +28,13 @@ int main() {
         int threshold_val = cv::getTrackbarPos("Threshold",  "Features");
         int block_size    = cv::getTrackbarPos("Block size", "Features");
 
-        // Harris response: each pixel gets a score measuring corner-ness.
-        // blockSize: local neighborhood; ksize: Sobel aperture; k: Harris free parameter.
-        int bs = std::max(block_size, 2);   // block size must be >= 2
-        cv::cornerHarris(gray, response, bs, 3, 0.04);
+        int bs = std::max(block_size, 2);
+        cv::cornerHarris(gray, response, bs, 3, 0.04);  // k=0.04 standard Harris sensitivity
 
         // Normalize to [0, 255] so the trackbar threshold is intuitive
         cv::normalize(response, response_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1);
 
-        // Mark pixels whose response exceeds the threshold
+        // threshold and draw
         for (int r = 0; r < response_norm.rows; r++) {
             for (int c = 0; c < response_norm.cols; c++) {
                 if (response_norm.at<float>(r, c) > threshold_val)
